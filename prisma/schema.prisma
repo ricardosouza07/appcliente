@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  document      String    @unique // CPF/CNPJ
+  role          UserRole  @default(PENDING_APPROVAL)
+  pricingTier   PricingTier @default(CONSUMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  orders        Order[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  CLIENT
+  PENDING_APPROVAL
+}
+
+enum PricingTier {
+  PROFESSIONAL
+  CONSUMER
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id                String    @id @default(uuid())
+  name              String
+  sku               String    @unique
+  description       String?   @db.Text
+  imageUrl          String?
+  stockQuantity     Int       @default(0)
+  basePrice         Decimal   @db.Decimal(10, 2)
+  consumerPrice     Decimal   @db.Decimal(10, 2)
+  professionalPrice Decimal   @db.Decimal(10, 2)
+  visibility        Visibility @default(ALL)
+  
+  categoryId        String
+  category          Category  @relation(fields: [categoryId], references: [id])
+  orderItems        OrderItem[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("products")
+}
+
+enum Visibility {
+  ALL
+  PROFESSIONAL_ONLY
+  CONSUMER_ONLY
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  status      OrderStatus @default(PENDING)
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  items       OrderItem[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED_BY_ADMIN
+  FINALIZED_WHATSAPP
+}
+
+model OrderItem {
+  id          String    @id @default(uuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  quantity    Int
+  priceAtTime Decimal   @db.Decimal(10, 2) // Price at the moment of order
+
+  @@map("order_items")
+}
+
+enum PipelineStatus {
+  OPORTUNIDADE
+  CONTATO_INICIAL
+  EM_NEGOCIACAO
+  ATIVADO
+  PERDIDO
+}
+
+model Client {
+  id                    String    @id @default(uuid())
+  razaoSocial           String
+  nomeFantasia          String?
+  email                 String?
+  telefone              String?
+  cidade                String?
+  estado                String?
+  bairro                String?
+  cep                   String?
+  endereco              String?
+  segmento              String?
+  situacaoPlanilha      String?
+
+  ultimoPedido          String?
+  dataUltimoPedido      DateTime?
+  vendedorUltimoPedido  String?
+  valorUltimoPedido     Decimal?   @db.Decimal(10, 2)
+  diasSemComprar        Int?
+  cicloMedioCompra      Float?
+
+  dataCadastro          DateTime?
+  
+  pipelineStatus        PipelineStatus @default(OPORTUNIDADE)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("clients")
+}
